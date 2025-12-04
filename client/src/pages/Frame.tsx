@@ -1,60 +1,57 @@
 import React, { useState, useEffect, useRef } from "react";
 
-const textElements = [
-  { id: "subject", text: "We", top: "top-[76px]", left: "left-[380px]", rotate: "" },
-  { id: "verb", text: "are staying", top: "top-[76px]", left: "left-[501px]", rotate: "" },
-  { id: "time", text: "tonight", top: "top-[122px]", left: "left-[671px]", rotate: "" },
-  {
-    id: "location",
-    text: "by the window",
-    top: "top-[181px]",
-    left: "left-[681px]",
-    rotate: "",
-  },
-  { id: "object", text: "silence", top: "top-[248px]", left: "left-[733px]", rotate: "" },
-  {
-    id: "conjunction",
-    text: "because",
-    top: "top-[175px]",
-    left: "left-[577px]",
-    rotate: "rotate-45",
-  },
-  {
-    id: "adverb",
-    text: "much",
-    top: "top-[303px]",
-    left: "left-[789px]",
-    rotate: "rotate-45",
-  },
-  {
-    id: "adverb2",
-    text: "too",
-    top: "top-[338px]",
-    left: "left-[787px]",
-    rotate: "rotate-45",
-  },
-  { id: "verb2", text: "has", top: "top-[248px]", left: "left-[618px]", rotate: "" },
-  { id: "subject2", text: "the moon", top: "top-[248px]", left: "left-[463px]", rotate: "" },
-];
-
+// 初始句子
+const INITIAL_SENTENCE = "We remain lingering this evening near the glassframe since the lunar lantern carries an excess of tender radiance";
+// const textElements = [
+//   { id: "subject", text: "We", top: "top-[76px]", left: "left-[380px]", rotate: "" },
+//   { id: "verb", text: "are staying", top: "top-[76px]", left: "left-[501px]", rotate: "" },
+//   { id: "time", text: "tonight", top: "top-[122px]", left: "left-[671px]", rotate: "" },
+//   {
+//     id: "location",
+//     text: "by the window",
+//     top: "top-[181px]",
+//     left: "left-[681px]",
+//     rotate: "",
+//   },
+//   { id: "object", text: "silence", top: "top-[248px]", left: "left-[733px]", rotate: "" },
+//   {
+//     id: "conjunction",
+//     text: "because",
+//     top: "top-[175px]",
+//     left: "left-[577px]",
+//     rotate: "rotate-45",
+//   },
+//   {
+//     id: "adverb",
+//     text: "much",
+//     top: "top-[303px]",
+//     left: "left-[789px]",
+//     rotate: "rotate-45",
+//   },
+//   {
+//     id: "adverb2",
+//     text: "too",
+//     top: "top-[338px]",
+//     left: "left-[787px]",
+//     rotate: "rotate-45",
+//   },
+//   { id: "verb2", text: "has", top: "top-[248px]", left: "left-[618px]", rotate: "" },
+//   { id: "subject2", text: "the moon", top: "top-[248px]", left: "left-[463px]", rotate: "" },
+// ];
 const languages = [
   { text: "EN", color: "text-black" },
-  // { text: "Italiano", color: "text-[#c0c0c0]" },
-  // { text: "中文", color: "text-[#d8d8d8]" },
 ];
 
-// Fixed word list for left panel rotation
-const FIXED_WORD_LIST = ["we", "are", "both", "he", "I", "she", "they", "someone", "it"];
-
 export const Frame = (): JSX.Element => {
+  // 句子状态：拆分为单词数组
+  const [words, setWords] = useState<string[]>(INITIAL_SENTENCE.split(' '));
+  
   // Left panel: track mouse and encoder contributions separately
   const [mouseRotation, setMouseRotation] = useState(0);
   const [encoderRotation, setEncoderRotation] = useState(0);
   const rotation = mouseRotation + encoderRotation;
   
   const [isDragging, setIsDragging] = useState(false);
-  // 存储每个位置当前显示的单词: { index: "word" }
-  const [wordStates, setWordStates] = useState<Record<number, string>>({});
   const panelRef = useRef<HTMLDivElement>(null);
   const lastAngleRef = useRef(0);
 
@@ -62,10 +59,6 @@ export const Frame = (): JSX.Element => {
   const [rightMouseRotation, setRightMouseRotation] = useState(0);
   const [rightEncoderRotation, setRightEncoderRotation] = useState(0);
   const rightRotation = rightMouseRotation + rightEncoderRotation;
-  
-  // 词的变体和当前变体索引
-  const [wordVariations, setWordVariations] = useState<string[]>([]);
-  const [variationIndex, setVariationIndex] = useState(0);
   
   // Debug: Log rotation changes to verify UI updates
   useEffect(() => {
@@ -82,7 +75,7 @@ export const Frame = (): JSX.Element => {
   }, [rightRotation, rightMouseRotation, rightEncoderRotation]);
   
   const [isRightDragging, setIsRightDragging] = useState(false);
-  const [selectedTextElementIndex, setSelectedTextElementIndex] = useState(0);
+  const [selectedWordIndex, setSelectedWordIndex] = useState(0);
   const rightPanelRef = useRef<HTMLImageElement>(null);
   const lastRightAngleRef = useRef(0);
   const lastRightRotationRef = useRef(0);
@@ -102,56 +95,66 @@ export const Frame = (): JSX.Element => {
 
   // 存储当前选中单词的变体列表
   const [currentVariations, setCurrentVariations] = useState<string[]>([]);
+  const [variationsFetchedForIndex, setVariationsFetchedForIndex] = useState<number | null>(null);
   
-  // 1. 当选中的单词改变时，获取新单词的变体
+  // 当选中词改变时，重置变体（不自动获取）
   useEffect(() => {
-    const currentElement = textElements[selectedTextElementIndex];
-    const originalWord = currentElement.text;
-    
-    // 先重置为原始词
-    setCurrentVariations([originalWord]);
-    // 清除该位置的当前修改（可选，看是否想保留之前的修改）
-    // setWordStates(prev => ({ ...prev, [selectedTextElementIndex]: originalWord }));
+    setCurrentVariations([words[selectedWordIndex]]);
+    setVariationsFetchedForIndex(null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedWordIndex]);
 
-    // 请求 LLM 变体
-    fetch('/api/word-variations', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ word: originalWord })
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.variations && data.variations.length > 0) {
-          // 把原始词放在第一个，后面跟着变体
-          setCurrentVariations([originalWord, ...data.variations]);
-        }
+  // 左边转盘：在变体列表中切换，更新句子中的单词
+  // 只有当左转盘转动时才获取变体
+  useEffect(() => {
+    // 如果还没为当前词获取过变体，先获取
+    if (variationsFetchedForIndex !== selectedWordIndex) {
+      const originalWord = words[selectedWordIndex];
+      
+      fetch('/api/word-variations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          word: originalWord,
+          context: words.join(' '),
+          position: selectedWordIndex
+        })
       })
-      .catch(console.error);
-  }, [selectedTextElementIndex]);
+        .then(res => res.json())
+        .then(data => {
+          if (data.variations && data.variations.length > 0) {
+            setCurrentVariations([originalWord, ...data.variations]);
+          }
+          setVariationsFetchedForIndex(selectedWordIndex);
+        })
+        .catch(console.error);
+      return;
+    }
 
-  // 2. 左边转盘：在变体列表中切换
-  useEffect(() => {
+    // 已有变体，根据旋转角度选择（每60度切换一个变体）
     if (currentVariations.length === 0) return;
 
-    const normalizedAngle = ((rotation % 360) + 360) % 360;
-    // 根据变体数量划分圆周
-    // 比如有5个变体，每72度切换一个
-    const segmentSize = 360 / Math.max(1, currentVariations.length);
-    const variationIndex = Math.floor(normalizedAngle / segmentSize) % currentVariations.length;
+    const threshold = 60; // 每60度切换一个变体
+    const variationIdx = Math.floor(Math.abs(rotation) / threshold) % currentVariations.length;
     
-    if (variationIndex >= 0 && variationIndex < currentVariations.length) {
-      const selectedVariation = currentVariations[variationIndex];
+    if (variationIdx >= 0 && variationIdx < currentVariations.length) {
+      const selectedVariation = currentVariations[variationIdx];
       
-      // 更新显示
-      setWordStates(prev => ({
-        ...prev,
-        [selectedTextElementIndex]: selectedVariation
-      }));
+      setWords(prev => {
+        if (prev[selectedWordIndex] === selectedVariation) return prev;
+        const newWords = [...prev];
+        newWords[selectedWordIndex] = selectedVariation;
+        return newWords;
+      });
     }
-  }, [rotation, currentVariations, selectedTextElementIndex]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rotation]); // 只在左转盘转动时触发
+
+  // 用于追踪是否正在预测新词
+  const [isPredicting, setIsPredicting] = useState(false);
 
   // 右边转盘：切换选中的单词位置 (Index)
-  // 顺时针 -> 下一个单词，逆时针 -> 上一个单词
+  // 顺时针 -> 下一个单词（到末尾时预测新词），逆时针 -> 上一个单词
   useEffect(() => {
     const rotationChange = rightRotation - lastRightRotationRef.current;
     const threshold = 60; // 每60度切换一个单词
@@ -160,14 +163,60 @@ export const Frame = (): JSX.Element => {
     if (steps > 0) {
       const direction = rotationChange > 0 ? 1 : -1;
       
-      setSelectedTextElementIndex((prev) => {
+      setSelectedWordIndex((prev) => {
         const newIndex = prev + (steps * direction);
-        return ((newIndex % textElements.length) + textElements.length) % textElements.length;
+        
+        // 不允许小于0
+        if (newIndex < 0) return 0;
+        
+        // 如果到达末尾，触发预测新词
+        if (newIndex >= words.length) {
+          // 触发预测（在下一个 effect 中处理）
+          return words.length; // 设置为超出末尾的位置，触发预测
+        }
+        
+        return newIndex;
       });
       
       lastRightRotationRef.current += steps * threshold * direction;
     }
-  }, [rightRotation]);
+  }, [rightRotation, words.length]);
+
+  // 当 selectedWordIndex 超出当前 words 长度时，预测新词
+  useEffect(() => {
+    if (selectedWordIndex >= words.length && !isPredicting) {
+      setIsPredicting(true);
+      
+      // 调用 API 预测下一个词（[MASK] 在末尾）
+      fetch('/api/word-variations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          word: '[PREDICT]', // 表示预测新词
+          context: words.join(' ') + ' [MASK]', // 把 MASK 放在末尾
+          position: words.length // 位置是末尾
+        })
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.variations && data.variations.length > 0) {
+            // 添加预测的第一个词到句子末尾
+            const predictedWord = data.variations[0];
+            setWords(prev => [...prev, predictedWord]);
+            // 设置变体列表供左转盘切换
+            setCurrentVariations(data.variations);
+            setVariationsFetchedForIndex(words.length);
+          }
+          setIsPredicting(false);
+        })
+        .catch((err) => {
+          console.error('Prediction error:', err);
+          setIsPredicting(false);
+          // 预测失败，回退到最后一个词
+          setSelectedWordIndex(words.length - 1);
+        });
+    }
+  }, [selectedWordIndex, words, isPredicting]);
 
   // WebSocket connection for Arduino encoders
   useEffect(() => {
@@ -182,7 +231,7 @@ export const Frame = (): JSX.Element => {
         let needsSync = true; // Flag to sync on first message after connection
 
         ws.onopen = () => {
-          console.log("✅ Arduino WebSocket connected");
+          console.log("Arduino WebSocket connected");
           setArduinoConnected(true);
           needsSync = true; // Reset sync flag on every connection
         };
@@ -475,11 +524,11 @@ export const Frame = (): JSX.Element => {
         ))}
       </nav>
 
-      <img
+      {/* <img
         className="top-[76px] left-[416px] w-[427px] h-[316px] absolute object-cover"
         alt="Image"
         src="/figmaAssets/image-4.png"
-      />
+      /> */}
 
       <div
         ref={panelRef}
@@ -512,15 +561,32 @@ export const Frame = (): JSX.Element => {
         data-testid="panel-right"
       />
 
-      {textElements.map((element, index) => (
-        <div
-          key={index}
-          className={`absolute ${element.top} ${element.left} ${element.rotate} [font-family:'Inter',Helvetica] font-normal ${selectedTextElementIndex === index ? 'text-[#808080]' : 'text-black'} text-2xl tracking-[0] leading-[normal]`}
-          data-testid={`text-${element.id}`}
-        >
-          {wordStates[index] || element.text}
+      {/* 线性句子显示 - 最多显示6个词 */}
+      <div className="absolute top-[180px] left-0 right-0 flex justify-center">
+        <div className="flex items-baseline gap-[0.35em] [font-family:'Libre_Baskerville',serif] text-[24px] tracking-[-0.02em] leading-[1.2]">
+          {(() => {
+            const maxVisible = 6;
+            const half = Math.floor(maxVisible / 2);
+            let start = Math.max(0, selectedWordIndex - half);
+            let end = Math.min(words.length, start + maxVisible);
+            if (end - start < maxVisible) start = Math.max(0, end - maxVisible);
+            return words.slice(start, end).map((word, i) => {
+              const actualIndex = start + i;
+              return (
+                <span
+                  key={actualIndex}
+                  className={`whitespace-nowrap transition-colors duration-200 ${
+                    selectedWordIndex === actualIndex ? 'text-black' : 'text-[#c0c0c0]'
+                  }`}
+                  data-testid={`word-${actualIndex}`}
+                >
+                  {word}
+                </span>
+              );
+            });
+          })()}
         </div>
-      ))}
+      </div>
       </div>
     </main>
   );
